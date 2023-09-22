@@ -28,6 +28,8 @@ def get_data(args):
         torchvision.transforms.ToTensor(),
         torchvision.transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ])
-    dataset = torchvision.datasets.ImageFolder(args.dataset_path, transform=transforms)
-    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
-    return dataloader
+    trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
+                                        download=True, transform=transforms)
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size,
+                                          shuffle=True)
+    return trainloader
