@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from torch import optim 
 import matplotlib.pyplot as plt 
-import tqdm as tqdm
+from tqdm import tqdm
 from utils import get_data ,save_images
 from modules import Unet
 import logging
@@ -94,7 +94,7 @@ def train(args):
         pbar = tqdm(dataloader)
         for i, (images, _) in enumerate(pbar):
             images = images.to(device="cuda")
-            t = diffusion.sample_timesteps(images.shape[0]).to(device='cuda')
+            t = diffusion.sample_timestep(images.shape[0]).to(device='cuda')
             x_t, noise = diffusion.noise_images(images, t)
             predicted_noise = model(x_t, t)
             loss = mse(noise, predicted_noise)
@@ -115,10 +115,12 @@ def launch():
     import argparse
     parser = argparse.ArgumentParser()
     args = parser.parse_args()
+    args.run_name = "DDPM_Uncondtional"
     args.epochs = 500
-    args.batch_size = 12
+    args.batch_size = 1
     args.image_size = 64
-    args.dataset_path = r"./cifar_train"
+    args.dataset_path = r"C:\Users\dome\datasets\landscape_img_folder"
+    args.device = "cuda"
     args.lr = 3e-4
     train(args)
 
