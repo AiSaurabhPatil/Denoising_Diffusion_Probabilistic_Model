@@ -1,8 +1,14 @@
 import os 
 import torch 
-import torch.nn as nn 
-# import matplotlib.pyplot as plt 
+import torch.nn as nn
+from torch import optim 
+import matplotlib.pyplot as plt 
 import tqdm as tqdm
+from utils import get_data ,save_images
+from modules import Unet
+import logging
+from torch.utils.tensorboard import SummaryWriter
+logging.basicConfig(format="%(asctime)s - %(levelname)s: %(message)s", level=logging.INFO, datefmt="%I:%M:%S")
 
 
 class Diffusion:
@@ -75,7 +81,47 @@ class Diffusion:
 
         return x  
 
+def train(args):
+    dataloader = get_data(args)
+    model = Unet().to(device='cuda')
+    optimizer = optim.AdamW(model.parameters(),lr=args.lr)
+    mse = nn.MSELoss()
+    diffusion = Diffusion(img_size=args.image_size)
+    l = len(dataloader)
+    logger = SummaryWriter(os.path.join("runs", args.run_name))
+    for epoch in range(args.epochs):
+        logging.info(f"Starting epoch {epoch}:")
+        pbar = tqdm(dataloader)
+        for i, (images, _) in enumerate(pbar):
+            images = images.to(device="cuda")
+            t = diffusion.sample_timesteps(images.shape[0]).to(device='cuda')
+            x_t, noise = diffusion.noise_images(images, t)
+            predicted_noise = model(x_t, t)
+            loss = mse(noise, predicted_noise)
 
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
+            pbar.set_postfix(MSE=loss.item())
+            logger.add_scalar("MSE", loss.item(), global_step=epoch * l + i)
+
+        sampled_images = diffusion.sample(model, n=images.shape[0])
+        save_images(sampled_images, os.path.join("results", args.run_name, f"{epoch}.jpg"))
+        # torch.save(model.state_dict(), os.path.join("models", args.run_name, f"ckpt.pt"))
             
     
+def launch():
+    import argparse
+    parser = argparse.ArgumentParser()
+    args = parser.parse_args()
+    args.epochs = 500
+    args.batch_size = 12
+    args.image_size = 64
+    args.dataset_path = r"./cifar_train"
+    args.lr = 3e-4
+    train(args)
+
+
+if __name__ == '__main__':
+    launch()
